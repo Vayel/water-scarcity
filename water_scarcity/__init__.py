@@ -138,8 +138,15 @@ def filter_karst_by_type(f, type_=1, logger=None):
     return data
 
 
-def display(risk, colorscale, karst=None, map_location=[46.4, 2.5], map_zoom=5):
-    m = folium.Map(location=map_location, zoom_start=map_zoom)
+def display(risk, colorscale, karst=None, map_location=[46.2, 2.4], map_zoom=5, **map_kwargs):
+    m = folium.Map(
+        location=map_location,
+        zoom_start=map_zoom,
+        width=350,
+        height=350,
+        prefer_canvas=True,
+        **map_kwargs
+    )
 
     risk_layer = folium.FeatureGroup(name="Risk")
     for p in risk["features"]:
