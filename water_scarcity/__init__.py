@@ -1,5 +1,6 @@
 import argparse
 from collections import defaultdict
+from contextlib import contextmanager
 import csv
 from itertools import tee
 import json
@@ -7,12 +8,29 @@ import logging
 import math
 import os
 import sys
+import tempfile
+import time
 
 import folium
 import joblib
+from selenium import webdriver
 from shapely.geometry import shape, Point
 
 SEASONS = ["winter", "spring", "summer", "autumn"]
+
+
+@contextmanager
+def _tmp_html(data):
+    """Yields the path of a temporary HTML file containing data."""
+    filepath = ''
+    try:
+        fid, filepath = tempfile.mkstemp(suffix=".html", prefix="folium_")
+        os.write(fid, data.encode("utf8"))
+        os.close(fid)
+        yield filepath
+    finally:
+        if os.path.isfile(filepath):
+            os.remove(filepath)
 
 
 def dump_geojson(data, path, **dump_kwargs):
@@ -138,12 +156,12 @@ def filter_karst_by_type(f, type_=1, logger=None):
     return data
 
 
-def display(risk, colorscale, karst=None, map_location=[46.2, 2.4], map_zoom=5, **map_kwargs):
+def display(risk, colorscale, karst=None, map_location=[46.2, 2.4], map_zoom=5, width=350, height=350, **map_kwargs):
     m = folium.Map(
         location=map_location,
         zoom_start=map_zoom,
-        width=350,
-        height=350,
+        width=width,
+        height=height,
         prefer_canvas=True,
         **map_kwargs
     )
@@ -166,3 +184,21 @@ def display(risk, colorscale, karst=None, map_location=[46.2, 2.4], map_zoom=5, 
         folium.LayerControl().add_to(m)
 
     return m
+
+
+def map_to_png(m, path, delay=3):
+    # https://github.com/python-visualization/folium/blob/master/folium/folium.py#L296
+    # geckodriver must be installed:
+    # https://selenium-python.readthedocs.io/installation.html#drivers
+    options = webdriver.firefox.options.Options()
+    options.add_argument("--headless")
+    driver = webdriver.Firefox(options=options)
+    html = m.get_root().render()
+    with _tmp_html(html) as fname:
+        # We need the tempfile to avoid JS security issues.
+        driver.get("file:///{path}".format(path=fname))
+        driver.maximize_window()
+        time.sleep(delay)
+        el = driver.find_elements_by_class_name("folium-map")[0]
+        el.screenshot(path)
+        driver.quit()

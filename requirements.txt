@@ -1,3 +1,4 @@
 folium>=0.10.0
 joblib>=0.13.2
+selenium>=3.141.0
 shapely>=1.6.4
