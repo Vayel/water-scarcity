@@ -118,11 +118,38 @@ def compute_risks(sswi_file, karst_file, n_jobs=-1, batch_size="auto", verbose=5
 
     geojson = defaultdict(dict)
     for horizon, horizon_data in features.items():
+        horizon_points = defaultdict(list)
         for season, points in horizon_data.items():
             geojson[horizon][season] = {
                 "type": "FeatureCollection",
                 "features": points,
             }
+            for p in points:
+                horizon_points[tuple(p["geometry"]["coordinates"])].append(p)
+
+        worst_horizon_points = []
+        best_horizon_points = []
+        for coords, points in horizon_points.items():
+            if len(points) != len(horizon_data): # Not all seasons have this point
+                continue
+            worst_p = best_p = None
+            for p in points:
+                risk = p["properties"]["riskLevel"]
+                if worst_p is None or risk > worst_p["properties"]["riskLevel"]:
+                    worst_p = p
+                if best_p is None or risk < best_p["properties"]["riskLevel"]:
+                    best_p = p
+            worst_horizon_points.append(worst_p)
+            best_horizon_points.append(best_p)
+
+        geojson[horizon]["more_risky"] = {
+            "type": "FeatureCollection",
+            "features": worst_horizon_points,
+        }
+        geojson[horizon]["less_risky"] = {
+            "type": "FeatureCollection",
+            "features": best_horizon_points,
+        }
 
     metadata = {
         "sswi": dict(min=min_sswi, max=max_sswi),

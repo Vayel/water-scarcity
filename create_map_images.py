@@ -7,7 +7,7 @@ import water_scarcity as ws
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(epilog=(
-        "Example: python create_map_images.py data/sswi.csv data/karst.json ."
+        "Example: python create_map_images.py data/sswi.csv data/karst.json images/"
     ))
     parser.add_argument("sswi_file", type=open)
     parser.add_argument("karst_file", type=open)
